@@ -17,10 +17,13 @@ FPS = 60
 
 ############### --- GAME VARIABLES --- ###############
 GRAVITY = 0.65
+SCROLL_THRESH = 200 # Distance the player can get to the edge of the screen before it starts to scroll
 ROWS = 16
 COLS = 150
 TILE_SIZE = SCREEN_HEIGHT // ROWS
 TILE_TYPES = 21
+screen_scroll = 0
+bg_scroll = 0
 level = 1
 
 ############### --- ACTION VARIABLES --- ###############
@@ -31,6 +34,13 @@ grenade = False
 grenade_thrown = False
 
 ############### --- IMAGES ---	###############
+
+# Background images
+pine1_img = pygame.image.load('img/Background/pine1.png').convert_alpha()
+pine2_img = pygame.image.load('img/Background/pine2.png').convert_alpha()
+mountain_img = pygame.image.load('img/Background/mountain.png').convert_alpha()
+sky_img = pygame.image.load('img/Background/sky_cloud.png').convert_alpha()
+
 
 # Bullets
 bullet_img = pygame.image.load('img/icons/bullet.png').convert_alpha()
@@ -75,6 +85,10 @@ def draw_text(text, font, text_col, x, y):
 ### Draw Background
 def draw_bg():
 	screen.fill(BG)
+	screen.blit(sky_img, (0, 0))
+	screen.blit(mountain_img, (0, SCREEN_HEIGHT - mountain_img.get_height() - 300))
+	screen.blit(pine1_img, (0, SCREEN_HEIGHT - pine1_img.get_height() - 150))
+	screen.blit(pine2_img, (0, SCREEN_HEIGHT - pine2_img.get_height()))
 
 ############### --- CLASSES --- ###############
 
@@ -133,6 +147,7 @@ class Soldier(pygame.sprite.Sprite):
 
 	def move(self, moving_left, moving_right):
 		# Reset movement variables
+		screen_scroll = 0
 		dx = 0
 		dy = 0
 		
@@ -176,6 +191,13 @@ class Soldier(pygame.sprite.Sprite):
 		self.rect.x += dx
 		self.rect.y += dy
 
+		#update scroll based on player position
+		if self.char_type == 'player':
+			if self.rect.right > SCREEN_WIDTH - SCROLL_THRESH or self.rect.left < SCROLL_THRESH:
+				self.rect.x -= dx
+				screen_scroll = -dx
+		return screen_scroll
+
 	def shoot(self):
 		if self.shoot_cooldown == 0 and self.ammo > 0:
 			self.shoot_cooldown = 20
@@ -216,6 +238,8 @@ class Soldier(pygame.sprite.Sprite):
 					self.idiling_counter -= 1
 					if self.idiling_counter <= 0:
 						self.idling = False
+		# scroll
+		self.rect.x += screen_scroll
 
 	def update_animation(self):
 		# Update animation
@@ -298,6 +322,7 @@ class World():
 	
 	def draw(self):
 		for tile in self.obstacle_list:
+			tile[1][0] += screen_scroll
 			screen.blit(tile[0], tile[1])
 ###
 
@@ -308,6 +333,9 @@ class Decoration(pygame.sprite.Sprite):
 		self.image = img
 		self.rect = self.image.get_rect()
 		self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
+
+	def update(self):
+		self.rect.x += screen_scroll
 ###
 
 ### WATER CLASS ###
@@ -317,6 +345,8 @@ class Water(pygame.sprite.Sprite):
 		self.image = img
 		self.rect = self.image.get_rect()
 		self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
+	def update(self):
+		self.rect.x += screen_scroll
 ###
 
 ### EXIT CLASS ###
@@ -326,6 +356,8 @@ class Exit(pygame.sprite.Sprite):
 		self.image = img
 		self.rect = self.image.get_rect()
 		self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
+	def update(self):
+		self.rect.x += screen_scroll
 ##
 
 ### ITEMSBOX CLASS ###
@@ -338,6 +370,8 @@ class ItemBox(pygame.sprite.Sprite):
 		self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
 
 	def update(self):
+		# scroll
+		self.rect.x += screen_scroll
 		# Check if the player has picked up the box
 		if pygame.sprite.collide_rect(self, player):
 			# Check what king of box it was
@@ -385,7 +419,7 @@ class Bullet(pygame.sprite.Sprite):
 	
 	def update(self):
 		# Move the bullet
-		self.rect.x += (self.direction * self.speed)
+		self.rect.x += (self.direction * self.speed) + screen_scroll
 		# Check if the bullet left the screen
 		if self.rect.right < 0 or self.rect.left > SCREEN_WIDTH:
 			self.kill() # clean memory
@@ -441,7 +475,7 @@ class Grenade(pygame.sprite.Sprite):
 					self.vel_y = 0
 					dy = tile[1].top - self.rect.bottom
 		# Update grenade's position
-		self.rect.x += dx
+		self.rect.x += dx + screen_scroll
 		self.rect.y += dy
 
 		# Countdown for the explosion
@@ -477,6 +511,8 @@ class Explosion(pygame.sprite.Sprite):
 		self.counter = 0
 	
 	def update(self):
+		# scroll
+		self.rect.x += screen_scroll
 		EXPLOSION_SPEED = 4
 		# Update explosion animation
 		self.counter += 1
@@ -578,7 +614,8 @@ while (run):
 			player.update_action(1) # running animation 
 		else:
 			player.update_action(0) # idle
-		player.move(moving_left, moving_right) # move the player
+		screen_scroll = player.move(moving_left, moving_right) # move the player
+		print(screen_scroll)
 
 	for event in pygame.event.get():
 		# quit game
