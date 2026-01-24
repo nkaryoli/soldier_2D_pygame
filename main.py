@@ -13,9 +13,9 @@ pygame.display.set_caption('Shooter')
 clock =  pygame.time.Clock()
 FPS = 60
 
-
 ############### --- GAME VARIABLES --- ###############
 GRAVITY = 0.75
+TILE_SIZE = 40
 
 ############### --- ACTION VARIABLES --- ###############
 moving_left = False
@@ -226,6 +226,16 @@ class Grenade(pygame.sprite.Sprite):
 			self.kill()
 			explosion = Explosion(self.rect.x, self.rect.y, 0.5)
 			explosion_group.add(explosion)
+			# Do damage to anyone that is nearby
+			if abs(self.rect.centerx - player.rect.centerx) < TILE_SIZE * 2 and \
+				abs(self.rect.centery - player.rect.centery) < TILE_SIZE * 2:
+				player.health -= 50
+			
+			for enemy in enemy_group:
+				if abs(self.rect.centerx - enemy.rect.centerx) < TILE_SIZE * 2 and \
+					abs(self.rect.centery - enemy.rect.centery) < TILE_SIZE * 2:
+					enemy.health -= 50
+
 ###
 
 ### EXPLOSION CLASS ###
@@ -259,13 +269,17 @@ class Explosion(pygame.sprite.Sprite):
 ##
 
 ############### --- SPRITES GROUPS --- ###############
+enemy_group = pygame.sprite.Group()
 bullet_group = pygame.sprite.Group()
 grenade_group = pygame.sprite.Group()
 explosion_group = pygame.sprite.Group()
 
 ############### --- CHARACTERS --- ###############
 player = Soldier('player', 200, 200, 3, 5, 20 , 5) # instance(player) from the Soldier class
-enemy = Soldier('enemy', 400, 170, 3, 5, 20, 0) # instance(enemy) from the Soldier class
+enemy = Soldier('enemy', 400, 250, 3, 5, 20, 0) # instance(enemy) from the Soldier class
+enemy2 = Soldier('enemy', 300, 300, 3, 5, 20, 0)
+enemy_group.add(enemy)
+enemy_group.add(enemy2)
 
 ############### --- GAME LOGIC -- ###############
 
@@ -278,8 +292,10 @@ while (run):
 
 	player.update()
 	player.draw() # Draw player on the screen
-	enemy.update()
-	enemy.draw()
+
+	for enemy in enemy_group:
+		enemy.update()
+		enemy.draw()
 
 	# Update and draw groups
 	bullet_group.update()
