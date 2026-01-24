@@ -75,7 +75,6 @@ def draw_text(text, font, text_col, x, y):
 ### Draw Background
 def draw_bg():
 	screen.fill(BG)
-	pygame.draw.line(screen, RED, (0, 300), (SCREEN_WIDTH, 300))
 
 ############### --- CLASSES --- ###############
 
@@ -390,6 +389,10 @@ class Bullet(pygame.sprite.Sprite):
 		# Check if the bullet left the screen
 		if self.rect.right < 0 or self.rect.left > SCREEN_WIDTH:
 			self.kill() # clean memory
+		# check for collisions with level
+		for tile in world.obstacle_list:
+			if tile[1].colliderect(self.rect):
+				self.kill()
 		# Collisions with other objects
 		if pygame.sprite.spritecollide(player, bullet_group, False):
 			if player.alive:
@@ -412,20 +415,31 @@ class Grenade(pygame.sprite.Sprite):
 		self.image = grenade_img
 		self.rect = self.image.get_rect()
 		self.rect.center = (x, y)
+		self.width = self.image.get_width()
+		self.height = self.image.get_height()
 		self.direction = direction
 	
 	def update(self):
 		self.vel_y += GRAVITY
 		dx = self.direction * self.speed
 		dy = self.vel_y
-		# Check collisions with floor
-		if self.rect.bottom + dy > 300:
-			dy = 300 - self.rect.bottom
-			self.speed = 0
-		# Check if the grenade hits a wall
-		if self.rect.right + dx < 0 or self.rect.left + dx > SCREEN_WIDTH:
-			self.direction *= -1
-			dx = self.direction * self.speed
+		#check for collision with level
+		for tile in world.obstacle_list:
+			# Check if the grenade hits a walls
+			if tile[1].colliderect(self.rect.x +dx, self.rect.y + dy, self.width, self.height):
+				self.direction *= -1
+				dx = self.direction * self.speed
+			# check for collisions in the y direction
+			if tile[1].colliderect(self.rect.x, self.rect.y + dy, self.width, self.height):
+				self.speed = 0
+				# check if bellow the ground, i.e. thrown up
+				if self.vel_y < 0:
+					self.vel_y = 0
+					dy = tile[1].bottom - self.rect.top
+				# check if above the ground, i.e. falling
+				elif self.vel_y >= 0:
+					self.vel_y = 0
+					dy = tile[1].top - self.rect.bottom
 		# Update grenade's position
 		self.rect.x += dx
 		self.rect.y += dy
