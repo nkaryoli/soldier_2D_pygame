@@ -1,5 +1,6 @@
 import pygame
 import os
+import random
 
 pygame.init()
 
@@ -87,6 +88,11 @@ class Soldier(pygame.sprite.Sprite):
 		self.frame_index = 0
 		self.action = 0 # index that indicates which animation I'm in
 		self.update_time = pygame.time.get_ticks()
+		# AI specific variable
+		self.move_counter = 0
+		self.vision = pygame.Rect(0, 0, 150, 20)
+		self.idling = False
+		self.idiling_counter = 0
 
 		# Load all animations for the player
 		animation_types = ['Idle', 'Run', 'Jump' , 'Death']
@@ -147,10 +153,43 @@ class Soldier(pygame.sprite.Sprite):
 	def shoot(self):
 		if self.shoot_cooldown == 0 and self.ammo > 0:
 			self.shoot_cooldown = 20
-			bullet = Bullet(self.rect.centerx + (0.6 * self.rect.size[0] * self.direction), self.rect.centery, self.direction)
+			bullet = Bullet(self.rect.centerx + (0.75 * self.rect.size[0] * self.direction), self.rect.centery, self.direction)
 			bullet_group.add(bullet)
 			self.ammo -= 1
 		
+	def ai(self):
+		if self.alive and player.alive:
+			if self.idling == False and random.randint(1, 200) == 1:
+				self.update_action(0) # idle animation
+				self.idling = True
+				self.idiling_counter = 50
+			# Check if the ai is near the player
+			if self.vision.colliderect(player.rect):
+				# Stop running and face player
+				self.update_action(0) # idle 
+				# Shoot the player
+				self.shoot()
+			# If it does not 'see' the player, continue with patrol
+			else:
+				if self.idling == False:
+					if self.direction == 1:
+						ai_moving_right = True
+					else:
+						ai_moving_right = False
+					ai_moving_left = not ai_moving_right
+					self.move(ai_moving_left, ai_moving_right)
+					self.update_action(1) # run animation
+					self.move_counter += 1
+					# Update ai vision as the enemy moves
+					self.vision.center = (self.rect.centerx + 75 * self.direction, self.rect.centery) # Area of vision for the enemy
+					
+					if self.move_counter > TILE_SIZE:
+						self.direction *= -1
+						self.move_counter *= -1
+				else:
+					self.idiling_counter -= 1
+					if self.idiling_counter <= 0:
+						self.idling = False
 
 	def update_animation(self):
 		# Update animation
@@ -255,10 +294,11 @@ class Bullet(pygame.sprite.Sprite):
 			if player.alive:
 				player.health -= 5
 				self.kill()
-		if pygame.sprite.spritecollide(enemy, bullet_group, False):
-			if enemy.alive:
-				enemy.health -= 25
-				self.kill()
+		for enemy in enemy_group:
+			if pygame.sprite.spritecollide(enemy, bullet_group, False):
+				if enemy.alive:
+					enemy.health -= 25
+					self.kill()
 ###
 
 ### GRENADE CLASS ###
@@ -353,10 +393,10 @@ item_box = ItemBox('Grenade', 500, 200)
 item_box_group.add(item_box)
 
 ############### --- CHARACTERS --- ###############
-player = Soldier('player', 200, 200, 3, 5, 20 , 5) # instance(player) from the Soldier class
+player = Soldier('player', 200, 200, 1.65, 5, 20 , 5) # instance(player) from the Soldier class
 health_bar = HealthBar(10, 10, player.health, player.health) # instance of the HealthBar class
-enemy = Soldier('enemy', 400, 250, 3, 5, 20, 0) # instance(enemy) from the Soldier class
-enemy2 = Soldier('enemy', 300, 300, 3, 5, 20, 0)
+enemy = Soldier('enemy', 500, 200, 1.65, 2, 20, 0) # instance(enemy) from the Soldier class
+enemy2 = Soldier('enemy', 300, 200, 1.65, 2, 20, 0)
 enemy_group.add(enemy)
 enemy_group.add(enemy2)
 
@@ -378,11 +418,12 @@ while (run):
 	# Show grenades
 	draw_text(f'GRENADES: ', font, WHITE, 10, 60)
 	for x in range(player.grenades):
-			screen.blit(grenade_img, (135 + (x * 15), 60))
+		screen.blit(grenade_img, (135 + (x * 15), 60))
 	player.update()
 	player.draw() # Draw player on the screen
 
 	for enemy in enemy_group:
+		enemy.ai()
 		enemy.update()
 		enemy.draw()
 
