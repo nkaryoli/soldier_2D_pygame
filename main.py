@@ -242,8 +242,21 @@ class Explosion(pygame.sprite.Sprite):
 		self.rect = self.image.get_rect()
 		self.rect.center = (x, y)
 		self.counter = 0
-##
+	
+	def update(self):
+		EXPLOSION_SPEED = 4
+		# Update explosion animation
+		self.counter += 1
 
+		if self.counter >= EXPLOSION_SPEED:
+			self.counter = 0
+			self.frame_index += 1
+			# If the animation is complete, delete the explosion
+			if self.frame_index >= len(self.images):
+				self.kill()
+			else:
+				self.image = self.images[self.frame_index]
+##
 
 ############### --- SPRITES GROUPS --- ###############
 bullet_group = pygame.sprite.Group()
@@ -326,6 +339,5 @@ while (run):
 				grenade_thrown = False
 
 	pygame.display.update() # update window 
-
 
 pygame.quit()
