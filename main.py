@@ -1,6 +1,7 @@
 import pygame
 import os
 import random
+import csv
 
 pygame.init()
 
@@ -16,7 +17,11 @@ FPS = 60
 
 ############### --- GAME VARIABLES --- ###############
 GRAVITY = 0.75
-TILE_SIZE = 40
+ROWS = 16
+COLS = 150
+TILE_SIZE = SCREEN_HEIGHT // ROWS
+TILE_TYPES = 21
+level = 1
 
 ############### --- ACTION VARIABLES --- ###############
 moving_left = False
@@ -42,6 +47,14 @@ item_boxes = {
 	'Ammo' : ammo_box_img,
 	'Grenade' : grenade_box_img
 }
+
+# Store tiles in a list
+img_list = []
+for x in range(TILE_TYPES):
+	img = pygame.image.load(f'img/Tile/{x}.png')
+	img = pygame.transform.scale(img, (TILE_SIZE, TILE_SIZE))
+	img_list.append(img)
+
 ################ --- COLORS --- ###############
 BG = (144, 201, 120)
 RED = (255, 0, 0)
@@ -226,6 +239,82 @@ class Soldier(pygame.sprite.Sprite):
 		screen.blit(pygame.transform.flip(self.image, self.flip, False), self.rect)
 ###
 
+### WORLD CLASS ###
+class World():
+	def __init__(self):
+		self.obstacle_list = []
+
+	def process_data(self, data):
+		# iterate through each value in level data file
+		for y, row in enumerate(data):
+			for x, tile in enumerate(row):
+				if tile >= 0:
+					img = img_list[tile] # pull the image form the list
+					img_rect = img.get_rect()
+					img_rect.x = x * TILE_SIZE
+					img_rect.y = y * TILE_SIZE
+					tile_data = (img, img_rect) # tupla
+
+					if tile >= 0 and tile <= 8:
+						self.obstacle_list.append(tile_data)
+					elif tile >= 9  and tile <= 10:
+						water = Decoration(img, x * TILE_SIZE, y * TILE_SIZE)
+						water_group.add(water)
+					elif tile >= 11  and tile <= 14:
+						decoration = Decoration(img, x * TILE_SIZE, y * TILE_SIZE)
+						decoration_group.add(decoration)
+					elif tile == 15: # create player
+						player = Soldier('player', x * TILE_SIZE, y * TILE_SIZE, 1.65, 5, 20 , 5) # instance(player) from the Soldier class
+						health_bar = HealthBar(10, 10, player.health, player.health) # instance of the HealthBar class
+					elif tile == 16: # create enemy
+						enemy = Soldier('enemy', x * TILE_SIZE, y * TILE_SIZE, 1.65, 2, 20, 0) # instance(enemy) from the Soldier class
+						enemy_group.add(enemy)
+					elif tile == 17: # create ammo box
+						item_box = ItemBox('Ammo', x * TILE_SIZE, y * TILE_SIZE)
+						item_box_group.add(item_box)
+					elif tile == 18: # Create grenade box
+						item_box = ItemBox('Grenade', x * TILE_SIZE, y * TILE_SIZE)
+						item_box_group.add(item_box)
+					elif tile == 19: # create health box
+						item_box = ItemBox('Health', x * TILE_SIZE, y * TILE_SIZE)
+						item_box_group.add(item_box)
+					elif tile == 20:
+						exit = Decoration(img, x * TILE_SIZE, y * TILE_SIZE)
+						exit_group.add(exit )
+		return player, health_bar
+	
+	def draw(self):
+		for tile in self.obstacle_list:
+			screen.blit(tile[0], tile[1])
+###
+
+### DECORATION CLASS ###
+class Decoration(pygame.sprite.Sprite):
+	def __init__(self, img, x, y):
+		pygame.sprite.Sprite.__init__(self)
+		self.image = img
+		self.rect = self.image.get_rect()
+		self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
+###
+
+### WATER CLASS ###
+class Water(pygame.sprite.Sprite):
+	def __init__(self, img, x, y):
+		pygame.sprite.Sprite.__init__(self)
+		self.image = img
+		self.rect = self.image.get_rect()
+		self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
+###
+
+### EXIT CLASS ###
+class Exit(pygame.sprite.Sprite):
+	def __init__(self, img, x, y):
+		pygame.sprite.Sprite.__init__(self)
+		self.image = img
+		self.rect = self.image.get_rect()
+		self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
+##
+
 ### ITEMSBOX CLASS ###
 class ItemBox(pygame.sprite.Sprite):
 	def __init__(self, item_type, x, y):
@@ -254,7 +343,6 @@ class ItemBox(pygame.sprite.Sprite):
 ###
 
 ### HEALTHBAR CLASS ###
-
 class HealthBar():
 	def __init__(self, x, y, health, max_health):
 		self.x = x
@@ -270,7 +358,6 @@ class HealthBar():
 		pygame.draw.rect(screen, BLACK, (self.x - 2, self.y - 2, 154, 24))
 		pygame.draw.rect(screen, RED, (self.x, self.y, 150, 20))
 		pygame.draw.rect(screen, GREEN, (self.x, self.y, 150 * ratio, 20))
-
 ###
 
 ### BULLET CLASS ###
@@ -344,7 +431,6 @@ class Grenade(pygame.sprite.Sprite):
 				if abs(self.rect.centerx - enemy.rect.centerx) < TILE_SIZE * 2 and \
 					abs(self.rect.centery - enemy.rect.centery) < TILE_SIZE * 2:
 					enemy.health -= 50
-
 ###
 
 ### EXPLOSION CLASS ###
@@ -383,22 +469,24 @@ bullet_group = pygame.sprite.Group()
 grenade_group = pygame.sprite.Group()
 explosion_group = pygame.sprite.Group()
 item_box_group = pygame.sprite.Group()
+decoration_group = pygame.sprite.Group()
+water_group = pygame.sprite.Group()
+exit_group = pygame.sprite.Group()
 
-# temp - create item boxes
-item_box = ItemBox('Health', 100, 200)
-item_box_group.add(item_box)
-item_box = ItemBox('Ammo', 400, 200)
-item_box_group.add(item_box)
-item_box = ItemBox('Grenade', 500, 200)
-item_box_group.add(item_box)
+############## --- WORLD MAP --- ###############
+world_data = []
+for row in range(ROWS):
+	r = [-1] * COLS # List of 150 entries of -1
+	world_data.append(r)
+# Load in level data and create world
+with open(f'level{level}_data.csv', newline='') as csvfile:
+	reader = csv.reader(csvfile, delimiter=',')
+	for x, row in enumerate(reader):
+		for y, tile in enumerate(row):
+			world_data[x][y] = int(tile)
 
-############### --- CHARACTERS --- ###############
-player = Soldier('player', 200, 200, 1.65, 5, 20 , 5) # instance(player) from the Soldier class
-health_bar = HealthBar(10, 10, player.health, player.health) # instance of the HealthBar class
-enemy = Soldier('enemy', 500, 200, 1.65, 2, 20, 0) # instance(enemy) from the Soldier class
-enemy2 = Soldier('enemy', 300, 200, 1.65, 2, 20, 0)
-enemy_group.add(enemy)
-enemy_group.add(enemy2)
+world = World()
+player, health_bar = world.process_data(world_data)
 
 ############### --- GAME LOGIC -- ###############
 
@@ -407,8 +495,10 @@ run = True
 while (run):
 
 	clock.tick(FPS)
-
-	draw_bg() # Draw background
+	# update background
+	draw_bg() 
+	# Draw qorld map
+	world.draw()
 	# Show player health
 	health_bar.draw(player.health)
 	# Show ammo
@@ -432,10 +522,16 @@ while (run):
 	grenade_group.update()
 	explosion_group.update()
 	item_box_group.update()
+	decoration_group.update()
+	water_group.update()
+	exit_group.update()
 	bullet_group.draw(screen)
 	grenade_group.draw(screen)
 	explosion_group.draw(screen)
 	item_box_group.draw(screen)
+	decoration_group.draw(screen)
+	water_group.draw(screen)
+	exit_group.draw(screen)
 
 	# Update player actions
 	if player.alive:
