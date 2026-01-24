@@ -9,44 +9,47 @@ SCREEN_HEIGHT = int(SCREEN_WIDTH * 0.8)
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption('Shooter')
 
-# Framerate
+###############	--- FRAMERATE --- ###############
 clock =  pygame.time.Clock()
 FPS = 60
 
-# Variables del Juego
+
+############### --- GAME VARIABLES --- ###############
 GRAVITY = 0.75
 
-# Variables de accion del player
+############### --- ACTION VARIABLES --- ###############
 moving_left = False
 moving_right = False
 shoot = False
 grenade = False
 grenade_thrown = False
-# Cargar Imagenes
 
-# Balas
+############### --- IMAGES ---	###############
+
+# Bullets
 bullet_img = pygame.image.load('img/icons/bullet.png').convert_alpha()
-# Granadas
+
+# Grenades
 grenade_img = pygame.image.load('img/icons/grenade.png').convert_alpha()
 
-# Colores
+################ --- COLORS --- ###############
 BG = (144, 201, 120)
 RED = (255, 0, 0)
 
+############### --- BACKGROUND --- ###############
 def draw_bg():
 	screen.fill(BG)
 	pygame.draw.line(screen, RED, (0, 300), (SCREEN_WIDTH, 300))
 
+############### --- CLASSES --- ###############
 
-
-
-
+#### SOLDIER CLASS ###
 class Soldier(pygame.sprite.Sprite):
 	def __init__(self, char_type, x, y, scale, speed, ammo, grenades): # CONSTRUCTOR
-		pygame.sprite.Sprite.__init__(self) # para heredar las funcionalidades de pygame
+		pygame.sprite.Sprite.__init__(self) # to inherit pygame's functionalities
 		self.alive = True
 		self.char_type = char_type
-		self.speed = speed # asignar el parametro y se la asigno a la instancia
+		self.speed = speed # assign the parameter to the instance
 		self.ammo = ammo
 		self.start_ammo = ammo
 		self.shoot_cooldown = 0
@@ -60,38 +63,38 @@ class Soldier(pygame.sprite.Sprite):
 		self.flip = False
 		self.animation_list = []
 		self.frame_index = 0
-		self.action = 0 # indice que indica en cual animacion estoy
+		self.action = 0 # index that indicates which animation I'm in
 		self.update_time = pygame.time.get_ticks()
 
-		# Cargar todas las animaciones para el player
+		# Load all animations for the player
 		animation_types = ['Idle', 'Run', 'Jump' , 'Death']
 		for animation in animation_types:
-			temp_list = [] # lista temporal para guardar los grupos de animaciones
-			# Contar los archivos en la carpeta
+			temp_list = [] # temporary list to store animation groups
+			# Count files in the folder
 			num_of_frames = len(os.listdir(f'img/{self.char_type}/{animation}'))
 			for i in range(num_of_frames):
 				img = pygame.image.load(f'img/{self.char_type}/{animation}/{i}.png').convert_alpha() 
-				img = pygame.transform.scale(img, (int(img.get_width() * scale), int(img.get_height() * scale))) # Escalo la imagen que esta muy pequeña
+				img = pygame.transform.scale(img, (int(img.get_width() * scale), int(img.get_height() * scale))) # Scale the image since it's very small
 				temp_list.append(img)
-			self.animation_list.append(temp_list) # guardo la lista dentro de la lista de animaciones
+			self.animation_list.append(temp_list) # save temp_list in the animations list
 
 		self.image = self.animation_list[self.action][self.frame_index]
-		self.rect = self.image.get_rect() # rectangulo alrededor de la imagen
-		self.rect.center = (x, y) # posicion recibida por parametro
+		self.rect = self.image.get_rect() # rectangle around the image
+		self.rect.center = (x, y) # place the rect in the position received as parameter
 
 	def update(self):
 		self.update_animation()
 		self.check_alive()
-		# Actualizar el cooldown
+		# Update cooldown
 		if self.shoot_cooldown > 0:
 			self.shoot_cooldown -= 1
 
 	def move(self, moving_left, moving_right):
-		# Resetear las variables de movimiento
+		# Reset movement variables
 		dx = 0
 		dy = 0
 		
-		# Asigno variables de movimiento left o right
+		# Assign movement to variables depending on how player is moving
 		if moving_left:
 			dx = -self.speed
 			self.flip = True
@@ -105,17 +108,17 @@ class Soldier(pygame.sprite.Sprite):
 			self.vel_y = -11
 			self.jump = False
 			self.in_air = True
-		# Gravedad
+		# Gravity
 		self.vel_y += GRAVITY
 		if self.vel_y > 10:
 			self.vel_y
 		dy += self.vel_y
-		# Check colisiones con el suelo
+		# Check collisions with floor
 		if self.rect.bottom + dy > 300:
 			dy = 300 - self.rect.bottom
 			self.in_air = False
 
-		# Actualizo la posicion de la caja
+		# Update positions
 		self.rect.x += dx
 		self.rect.y += dy
 
@@ -128,26 +131,26 @@ class Soldier(pygame.sprite.Sprite):
 		
 
 	def update_animation(self):
-		# Actualizo la animacion
+		# Update animation
 		ANIMATION_COOLDOWN = 100
-		# Actulalizo imagen dependiendo del frame y la animacion actual
+		# Update image depending on the frame and current animation
 		self.image = self.animation_list[self.action][self.frame_index]
-		# Check if ha pasado suficioente tiempo desde la ultima actualizacion
+		# Check if enough time has passed since the last update
 		if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
-			self.update_time = pygame.time.get_ticks() # actualizo  el tiempo de la instancia
-			self.frame_index += 1 # muevo al siguiente indice de la lista
-		# Si la animacion ha llegado al ultimo indice de la lista
+			self.update_time = pygame.time.get_ticks() # update the instance time
+			self.frame_index += 1 # move to the next index in the list
+		# If the animation has reached the last index in the list
 		if self.frame_index >= len(self.animation_list[self.action]):
 			if self.action == 3:
-				self.frame_index = len(self.animation_list[self.action]) - 1 # si es DEATH paramos la animacion
+				self.frame_index = len(self.animation_list[self.action]) - 1 # if it's DEATH, stop the animation
 			else:
-				self.frame_index = 0 # Pra el resto, la reseteamos al princcipio
+				self.frame_index = 0 # For the rest, reset it to the beginning
 
 	def update_action(self, new_action):
-		# Reviso si la animacion actual es diferente a la antenrior
+		# Check if the current animation is different from the previous one
 		if new_action != self.action:
 			self.action = new_action
-			# Actualizo la configuarcion de la animacion
+			# Update the animation configuration
 			self.frame_index = 0
 			self.update_time = pygame.time.get_ticks()
 
@@ -156,11 +159,13 @@ class Soldier(pygame.sprite.Sprite):
 			self.health = 0
 			self.speed = 0
 			self.alive = False
-			self.update_action(3) # reproducir animacion death
+			self.update_action(3) # play death animation
 
 	def draw(self):
 		screen.blit(pygame.transform.flip(self.image, self.flip, False), self.rect)
+###
 
+### BULLET CLASS ###
 class Bullet(pygame.sprite.Sprite):
 	def __init__(self, x, y, direction):
 		pygame.sprite.Sprite.__init__(self)
@@ -171,12 +176,12 @@ class Bullet(pygame.sprite.Sprite):
 		self.direction = direction
 	
 	def update(self):
-		# Mover la bala
+		# Move the bullet
 		self.rect.x += (self.direction * self.speed)
-		# Revisar si la bala salio de la pantalla
+		# Check if the bullet left the screen
 		if self.rect.right < 0 or self.rect.left > SCREEN_WIDTH:
-			self.kill() # limpio memoria
-		# Colisiones con otros objetos
+			self.kill() # clean memory
+		# Collisions with other objects
 		if pygame.sprite.spritecollide(player, bullet_group, False):
 			if player.alive:
 				player.health -= 5
@@ -185,7 +190,9 @@ class Bullet(pygame.sprite.Sprite):
 			if enemy.alive:
 				enemy.health -= 25
 				self.kill()
+###
 
+### GRENADE CLASS ###
 class Grenade(pygame.sprite.Sprite):
 	def __init__(self, x, y, direction):
 		pygame.sprite.Sprite.__init__(self)
@@ -201,25 +208,27 @@ class Grenade(pygame.sprite.Sprite):
 		self.vel_y += GRAVITY
 		dx = self.direction * self.speed
 		dy = self.vel_y
-		# Check colisiones con el suelo
+		# Check collisions with floor
 		if self.rect.bottom + dy > 300:
 			dy = 300 - self.rect.bottom
 			self.speed = 0
-		# Revisar si la granada choca con la pared
+		# Check if the grenade hits a wall
 		if self.rect.right + dx < 0 or self.rect.left + dx > SCREEN_WIDTH:
 			self.direction *= -1
 			dx = self.direction * self.speed
-		# Actulizo la posicion de la granada
+		# Update grenade's position
 		self.rect.x += dx
 		self.rect.y += dy
 
-		# Cuenta atras para la explosion
+		# Countdown for the explosion
 		self.timer -= 1
 		if self.timer <= 0:
 			self.kill()
 			explosion = Explosion(self.rect.x, self.rect.y, 0.5)
 			explosion_group.add(explosion)
+###
 
+### EXPLOSION CLASS ###
 class Explosion(pygame.sprite.Sprite):
 	def __init__(self, x, y, scale):
 		pygame.sprite.Sprite.__init__(self)
@@ -233,31 +242,33 @@ class Explosion(pygame.sprite.Sprite):
 		self.rect = self.image.get_rect()
 		self.rect.center = (x, y)
 		self.counter = 0
+##
 
 
-
-# Crear grupos de sprites
+############### --- SPRITES GROUPS --- ###############
 bullet_group = pygame.sprite.Group()
 grenade_group = pygame.sprite.Group()
 explosion_group = pygame.sprite.Group()
 
+############### --- CHARACTERS --- ###############
+player = Soldier('player', 200, 200, 3, 5, 20 , 5) # instance(player) from the Soldier class
+enemy = Soldier('enemy', 400, 170, 3, 5, 20, 0) # instance(enemy) from the Soldier class
 
-player = Soldier('player', 200, 200, 3, 5, 20 , 5) # instancio un jugador de la clase Soldier
-enemy = Soldier('enemy', 400, 170, 3, 5, 20, 0) # instancio un jugador de la clase Soldier
+############### --- GAME LOGIC -- ###############
 
 run = True
 
 while (run):
 
 	clock.tick(FPS)
-	draw_bg() # Pinto el background
+	draw_bg() # Draw background
 
 	player.update()
-	player.draw() # pinta al jugador en la pantalla
+	player.draw() # Draw player on the screen
 	enemy.update()
 	enemy.draw()
 
-	# Actualizar y dibujar grupos
+	# Update and draw groups
 	bullet_group.update()
 	grenade_group.update()
 	explosion_group.update()
@@ -265,27 +276,27 @@ while (run):
 	grenade_group.draw(screen)
 	explosion_group.draw(screen)
 
-	# Atualizar las acciones del player
+	# Update player actions
 	if player.alive:
 		
 		if shoot:
-			player.shoot() # Disparo
+			player.shoot() # Shoot
 		elif grenade and grenade_thrown == False and player.grenades > 0:
 			grenade = Grenade(player.rect.centerx + (0.5 * player.rect.size[0] * player.direction), \
 						player.rect.top, player.direction)
 			grenade_group.add(grenade)
-			player.grenades -= 1 # reducir la cantidad de granadas
+			player.grenades -= 1 # reduce the number of grenades
 			grenade_thrown = True 
 		if player.in_air:
 			player.update_action(2) # jump
 		elif moving_left or moving_right:
-			player.update_action(1) # animacion de correr 
+			player.update_action(1) # running animation 
 		else:
 			player.update_action(0) # idle
-		player.move(moving_left, moving_right) # muevo el player
+		player.move(moving_left, moving_right) # move the player
 
 	for event in pygame.event.get():
-		# quite game
+		# quit game
 		if event.type == pygame.QUIT:
 			run = False
 		# Keyboard presses
@@ -302,7 +313,7 @@ while (run):
 				player.jump = True
 			if event.key == pygame.K_ESCAPE:
 				run = False
-		# Keyboard bvotton releasses
+		# Keyboard button releases
 		if event.type == pygame.KEYUP:
 			if event.key == pygame.K_a:
 				moving_left = False
@@ -314,8 +325,7 @@ while (run):
 				grenade = False
 				grenade_thrown = False
 
-	pygame.display.update() # actualiza la ventana 
-
+	pygame.display.update() # update window 
 
 
 pygame.quit()
