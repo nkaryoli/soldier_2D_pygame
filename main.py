@@ -16,7 +16,7 @@ clock =  pygame.time.Clock()
 FPS = 60
 
 ############### --- GAME VARIABLES --- ###############
-GRAVITY = 0.75
+GRAVITY = 0.65
 ROWS = 16
 COLS = 150
 TILE_SIZE = SCREEN_HEIGHT // ROWS
@@ -122,6 +122,8 @@ class Soldier(pygame.sprite.Sprite):
 		self.image = self.animation_list[self.action][self.frame_index]
 		self.rect = self.image.get_rect() # rectangle around the image
 		self.rect.center = (x, y) # place the rect in the position received as parameter
+		self.width = self.image.get_width()
+		self.height = self.image.get_height()
 
 	def update(self):
 		self.update_animation()
@@ -154,10 +156,22 @@ class Soldier(pygame.sprite.Sprite):
 		if self.vel_y > 10:
 			self.vel_y
 		dy += self.vel_y
-		# Check collisions with floor
-		if self.rect.bottom + dy > 300:
-			dy = 300 - self.rect.bottom
-			self.in_air = False
+		# Check collisions
+		for tile in world.obstacle_list:
+			#check collision in the x direction
+			if tile[1].colliderect(self.rect.x + dx, self.rect.y, self.width, self.height):
+				dx = 0
+			# check for collisions in the y direction
+			if tile[1].colliderect(self.rect.x, self.rect.y + dy, self.width, self.height):
+				# check if bellow the ground, i.e. jumping
+				if self.vel_y < 0:
+					self.vel_y = 0
+					dy = tile[1].bottom - self.rect.top
+				# check if above the ground, i.e. falling
+				elif self.vel_y >= 0:
+					self.vel_y = 0
+					self.in_air = False
+					dy = tile[1].top - self.rect.bottom
 
 		# Update positions
 		self.rect.x += dx
