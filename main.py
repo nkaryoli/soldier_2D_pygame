@@ -85,10 +85,12 @@ def draw_text(text, font, text_col, x, y):
 ### Draw Background
 def draw_bg():
 	screen.fill(BG)
-	screen.blit(sky_img, (0, 0))
-	screen.blit(mountain_img, (0, SCREEN_HEIGHT - mountain_img.get_height() - 300))
-	screen.blit(pine1_img, (0, SCREEN_HEIGHT - pine1_img.get_height() - 150))
-	screen.blit(pine2_img, (0, SCREEN_HEIGHT - pine2_img.get_height()))
+	width = sky_img.get_width()
+	for x in range(5):
+		screen.blit(sky_img, ((x * width) - bg_scroll * 0.5, 0))
+		screen.blit(mountain_img, ((x * width) - bg_scroll * 0.6, SCREEN_HEIGHT - mountain_img.get_height() - 300))
+		screen.blit(pine1_img, ((x * width) - bg_scroll * 0.7, SCREEN_HEIGHT - pine1_img.get_height() - 150))
+		screen.blit(pine2_img, ((x * width) - bg_scroll * 0.8, SCREEN_HEIGHT - pine2_img.get_height()))
 
 ############### --- CLASSES --- ###############
 
@@ -175,6 +177,10 @@ class Soldier(pygame.sprite.Sprite):
 			#check collision in the x direction
 			if tile[1].colliderect(self.rect.x + dx, self.rect.y, self.width, self.height):
 				dx = 0
+				# if the ai  has hit a wall then make it turn around
+				if self.char_type == 'enemy':
+					self.direction *= -1
+					self.move_counter = 0
 			# check for collisions in the y direction
 			if tile[1].colliderect(self.rect.x, self.rect.y + dy, self.width, self.height):
 				# check if bellow the ground, i.e. jumping
@@ -187,13 +193,19 @@ class Soldier(pygame.sprite.Sprite):
 					self.in_air = False
 					dy = tile[1].top - self.rect.bottom
 
+		# check if goinf off the edges of the screen
+		if self.char_type == 'player':
+			if self.rect.left + dx < 0 or self.rect.right +dx > SCREEN_WIDTH:
+				dx = 0
+
 		# Update positions
 		self.rect.x += dx
 		self.rect.y += dy
 
 		#update scroll based on player position
 		if self.char_type == 'player':
-			if self.rect.right > SCREEN_WIDTH - SCROLL_THRESH or self.rect.left < SCROLL_THRESH:
+			if (self.rect.right > SCREEN_WIDTH - SCROLL_THRESH and bg_scroll < (world.level_length * TILE_SIZE) - SCREEN_WIDTH) \
+				or (self.rect.left < SCROLL_THRESH and bg_scroll > abs(dx)):
 				self.rect.x -= dx
 				screen_scroll = -dx
 		return screen_scroll
@@ -282,6 +294,7 @@ class World():
 		self.obstacle_list = []
 
 	def process_data(self, data):
+		self.level_length = len(data[0]) #How many tiles there are in one row
 		# iterate through each value in level data file
 		for y, row in enumerate(data):
 			for x, tile in enumerate(row):
@@ -615,7 +628,7 @@ while (run):
 		else:
 			player.update_action(0) # idle
 		screen_scroll = player.move(moving_left, moving_right) # move the player
-		print(screen_scroll)
+		bg_scroll -= screen_scroll
 
 	for event in pygame.event.get():
 		# quit game
