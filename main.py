@@ -97,7 +97,7 @@ for x in range(TILE_TYPES):
 		21: 0.8,
 		22: 0.8,
 		23: 0.6,
-		24: 0.7,
+		24: 0.6,
 		25: 0.5
 	}
 
@@ -181,7 +181,6 @@ class Soldier(pygame.sprite.Sprite):
 		self.idling = False
 		self.idiling_counter = 0
 
-
 		# Load all animations for the player
 		animation_types = ['Idle', 'Run', 'Jump' , 'Death', 'Shoot']
 		for animation in animation_types:
@@ -211,6 +210,7 @@ class Soldier(pygame.sprite.Sprite):
 			self.shoot_cooldown -= 1
 
 	def move(self, moving_left, moving_right):
+		global bg_scroll
 		# Reset movement variables
 		screen_scroll = 0
 		dx = 0
@@ -241,10 +241,6 @@ class Soldier(pygame.sprite.Sprite):
 			#check collision in the x direction
 			if tile[1].colliderect(self.hitbox.x + dx, self.hitbox.y, self.hitbox.width, self.hitbox.height):
 				dx = 0
-				# if the ai  has hit a wall then make it turn around
-				if self.char_type == 'enemy':
-					self.direction *= -1
-					self.move_counter = 0
 
 			# check for collisions in the 'y' direction
 			if tile[1].colliderect(self.hitbox.x, self.hitbox.y + dy, self.hitbox.width, self.hitbox.height):
@@ -272,20 +268,24 @@ class Soldier(pygame.sprite.Sprite):
 			if self.rect.left + dx < 0 or self.rect.right +dx > SCREEN_WIDTH:
 				dx = 0
 
-		#update scroll based on player position
+		# update scroll based on player position
 		if self.char_type == 'player':
-			if (self.hitbox.right > SCREEN_WIDTH - SCROLL_THRESH and bg_scroll < (world.level_length * TILE_SIZE) - SCREEN_WIDTH) \
-				or (self.hitbox.left < SCROLL_THRESH and bg_scroll > abs(dx)):
+			# Scroll hacia la derecha
+			if self.hitbox.right > SCREEN_WIDTH - SCROLL_THRESH and bg_scroll < (world.level_length * TILE_SIZE) - SCREEN_WIDTH:
+				self.hitbox.x -= dx
+				screen_scroll = -dx
+			# Scroll hacia la izquierda
+			elif self.hitbox.left < SCROLL_THRESH and bg_scroll > 0:
 				self.hitbox.x -= dx
 				screen_scroll = -dx
 
-		# mover hitbox (FÍSICA REAL)
+		# move hitbox (FÍSICA)
 		self.hitbox.x += dx
 		self.hitbox.y += dy
 
-		# sincronizar sprite con hitbox (SOLO VISUAL)
+		# synchronize sprite with hitbox (VISUALLY)
 		self.rect.center = self.hitbox.center
-
+	
 		return screen_scroll, level_complete
 
 	def shoot(self):
@@ -303,14 +303,20 @@ class Soldier(pygame.sprite.Sprite):
 				self.update_action(0) # idle animation
 				self.idling = True
 				self.idiling_counter = 50
+			
+			# Update ai vision as the enemy moves
+			self.vision.center = (self.hitbox.centerx + 75 * self.direction, self.hitbox.centery)
+			# pygame.draw.rect(screen, RED, self.vision, 1) #área de visión
+			
 			# Check if the ai is near the player
-			if self.vision.colliderect(player.rect):
+			if self.vision.colliderect(player.hitbox):
 				# Stop running and face player
 				self.update_action(0) # idle 
 				# Shoot the player
 				self.shoot()
 			# If it does not 'see' the player, continue with patrol
 			else:
+				# Patrolling
 				if self.idling == False:
 					if self.direction == 1:
 						ai_moving_right = True
@@ -318,21 +324,19 @@ class Soldier(pygame.sprite.Sprite):
 						ai_moving_right = False
 
 					ai_moving_left = not ai_moving_right
+					# Move ai
 					self.move(ai_moving_left, ai_moving_right)
 					self.update_action(1) # run animation
 					self.move_counter += 1
-					# Update ai vision as the enemy moves
-					self.vision.center = (self.rect.centerx + 75 * self.direction, self.rect.centery) # Area of vision for the enemy
-					
-					if self.move_counter > TILE_SIZE:
+
+					if self.move_counter > TILE_SIZE * 3:
 						self.direction *= -1
-						self.move_counter *= -1
+						self.move_counter = -1
 				else:
 					self.idiling_counter -= 1
 					if self.idiling_counter <= 0:
 						self.idling = False
 		# scroll
-		# self.rect.x += screen_scroll
 		self.hitbox.x += screen_scroll
 		self.rect.center = self.hitbox.center
 
@@ -414,7 +418,6 @@ class World():
 						enemy = Soldier('enemy', x * TILE_SIZE, y * TILE_SIZE, 0.11, 2, 20, 0) # instance(enemy) from the Soldier class
 						enemy_group.add(enemy)
 				
-
 		return player, health_bar
 	
 	def draw(self):
@@ -732,7 +735,21 @@ while (run):
 
 		# Update player actions
 		if player.alive:
-			
+			screen_scroll, level_complete = player.move(moving_left, moving_right) # move the player
+			bg_scroll -= screen_scroll
+			# bg_scroll = max(0, bg_scroll)
+			# CANDADO DE SEGURIDAD: Evita que el scroll sea negativo (la franja negra)
+			if bg_scroll < 0:
+				# Si el scroll se pasó de 0, devolvemos la diferencia al jugador
+				# para que el personaje se mueva pero la cámara no
+				player.hitbox.x += bg_scroll 
+				bg_scroll = 0
+			# CANDADO DE SEGURIDAD: Evita que el scroll pase del final del nivel
+			max_scroll = (world.level_length * TILE_SIZE) - SCREEN_WIDTH
+			if bg_scroll > max_scroll:
+				player.hitbox.x += (bg_scroll - max_scroll)
+				bg_scroll = max_scroll
+
 			if shoot:
 				player.update_action(4) # shoot 
 				player.shoot() # Shoot
@@ -748,8 +765,6 @@ while (run):
 				player.update_action(1) # running animation 
 			else:
 				player.update_action(0) # idle
-			screen_scroll, level_complete = player.move(moving_left, moving_right) # move the player
-			bg_scroll -= screen_scroll
 			# check level completed
 			if level_complete:
 				# level += 1
