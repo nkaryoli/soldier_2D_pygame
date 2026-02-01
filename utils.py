@@ -1,4 +1,6 @@
 import pygame
+import json
+import os
 from settings import *
 from entities import *
 
@@ -61,3 +63,15 @@ def reset_level():
 		r = [-1] * COLS # List of 150 entries of -1
 		data.append(r)
 	return data
+
+### Save data to JSON
+def save_game_json(data):
+	with open('savegame.json', 'w') as f:
+		json.dump(data, f, indent=4)
+
+### Load data from JSON
+def load_game_json():
+	if os.path.exists('savegame.json'):
+		with open('savegame.json', 'r') as f:
+			return json.load(f)
+	return None

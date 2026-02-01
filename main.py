@@ -60,6 +60,96 @@ class Game:
 		self.world = World()
 		self.player, self.health_bar = self.world.process_data(self.world_data)
 
+	def save_game(self):
+		# Collect remaining items and their absolute world positions
+		items_list = []
+		for item in item_box_group:
+			items_list.append({
+				'item_type': item.item_type,
+				'x': item.rect.x + self.bg_scroll, # Absolute World X
+				'y': item.rect.y
+			})
+		
+		# Collect alive enemies and their states
+		enemies_list = []
+		for enemy in enemy_group:
+			if enemy.alive:
+				enemies_list.append({
+					'x': enemy.hitbox.x + self.bg_scroll, # Absolute World X
+					'y': enemy.hitbox.y,
+					'health': enemy.health,
+					'direction': enemy.direction,
+					'move_counter': enemy.move_counter
+				})
+		
+		save_data = {
+			'level': self.level,
+			'health': self.player.health,
+			'ammo': self.player.ammo,
+			'grenades': self.player.grenades,
+			'player_x': self.player.hitbox.x + self.bg_scroll, # Absolute World X
+			'player_y': self.player.hitbox.y,
+			'bg_scroll': self.bg_scroll,
+			'items': items_list,
+			'enemies': enemies_list
+		}
+		save_game_json(save_data)
+		print("Game Saved!")
+
+	def load_game(self):
+		data = load_game_json()
+		if data:
+			self.level = data['level']
+			self.load_level() # This resets groups and loads world data
+			
+			# Restore camera scroll
+			self.bg_scroll = data['bg_scroll']
+			
+			# Shift all level-loaded sprites and tiles by the restored scroll
+			for tile in self.world.obstacle_list:
+				tile[1].x -= self.bg_scroll
+			for decoration in decoration_group:
+				decoration.rect.x -= self.bg_scroll
+			for exit_obj in exit_group:
+				exit_obj.rect.x -= self.bg_scroll
+
+			# Restore player state
+			self.player.health = data['health']
+			self.player.ammo = data['ammo']
+			self.player.grenades = data['grenades']
+			
+			# Restore player position (Absolute World X -> Screen position)
+			self.player.hitbox.x = data['player_x'] - self.bg_scroll
+			self.player.hitbox.y = data['player_y']
+			self.player.rect.center = self.player.hitbox.center
+			
+			# Restore items: clear those created by load_level and use saved ones
+			item_box_group.empty()
+			for item_data in data['items']:
+				# We use dummy (0,0) and then correct rect.x/y to avoid re-calculating midtop math
+				item_box = ItemBox(item_data['item_type'], 0, 0)
+				item_box.rect.x = item_data['x'] - self.bg_scroll
+				item_box.rect.y = item_data['y']
+				item_box_group.add(item_box)
+			
+			# Restore enemies: clear those created by load_level and use saved ones
+			enemy_group.empty()
+			for enemy_data in data['enemies']:
+				# Note: enemies use scale 0.11 and speed 2 as per world.py
+				enemy = Soldier('enemy', 0, 0, 0.11, 2, 20, 0)
+				enemy.health = enemy_data['health']
+				enemy.direction = enemy_data['direction']
+				enemy.move_counter = enemy_data.get('move_counter', 0)
+				enemy.flip = True if enemy.direction == -1 else False
+				enemy.hitbox.x = enemy_data['x'] - self.bg_scroll
+				enemy.hitbox.y = enemy_data['y']
+				enemy.rect.center = enemy.hitbox.center
+				enemy_group.add(enemy)
+			
+			print("Game Loaded!")
+		else:
+			print("No save game found.")
+
 	def handle_events(self):
 		for event in pygame.event.get():
 			# quit game
@@ -80,6 +170,10 @@ class Game:
 					jump_fx.play()
 				if event.key == pygame.K_ESCAPE:
 					self.run = False
+				if event.key == pygame.K_k:
+					self.save_game()
+				if event.key == pygame.K_l:
+					self.load_game()
 			# Keyboard button releases
 			if event.type == pygame.KEYUP:
 				if event.key == pygame.K_a or event.key == pygame.K_LEFT:
