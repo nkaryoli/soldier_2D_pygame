@@ -96,10 +96,10 @@ class Game:
 		# Update and draw groups
 		bullet_group.update(self.player, enemy_group, self.world, self.screen_scroll)
 		grenade_group.update(self.player, enemy_group, self.world, self.screen_scroll)
-		explosion_group.update(self.screen_scroll)
 		decoration_group.update(self.screen_scroll)
 		item_box_group.update(self.player, self.screen_scroll)
 		exit_group.update(self.screen_scroll)
+		explosion_group.update(self.screen_scroll)
 		
 		self.player.update()
 		for enemy in enemy_group:
@@ -158,12 +158,12 @@ class Game:
 			draw_bg(self.screen, self.bg_scroll) 
 			
 			# draw sprite groups
-			bullet_group.draw(self.screen)
-			grenade_group.draw(self.screen)
-			explosion_group.draw(self.screen)
 			decoration_group.draw(self.screen)
 			item_box_group.draw(self.screen)
+			bullet_group.draw(self.screen)
+			grenade_group.draw(self.screen)
 			exit_group.draw(self.screen)
+			explosion_group.draw(self.screen)
 
 			# Draw world map
 			self.world.draw(self.screen, self.screen_scroll)
@@ -172,12 +172,12 @@ class Game:
 			self.health_bar.draw(self.screen, self.player.health)
 			
 			# Show ammo
-			draw_text(self.screen, f'Bullets: ', font, BLACK, 10, 10)
+			draw_text(self.screen, f'Bullets: ', font, BROWN, 10, 10)
 			for x in range(self.player.ammo):
 				self.screen.blit(bullet_img, (100 + (x * 15), 15))
 			
 			# Show grenades
-			draw_text(self.screen, f'Grenades: ', font, BLACK, 10, 40)
+			draw_text(self.screen, f'Grenades: ', font, BROWN, 10, 40)
 			for x in range(self.player.grenades):
 				self.screen.blit(grenade_img, (120 + (x * 15), 40))
 			
