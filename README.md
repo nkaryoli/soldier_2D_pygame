@@ -114,7 +114,7 @@ Este proyecto destaca por una arquitectura sólida, optimización de recursos me
 1. Clona el repositorio:
 
 ```bash
-git clone https://github.com/nkaryoli/soldier_2D_pygame.git
+git clone https://github.com/nkaryoli/Dusty-Belle-2D-Action-Platformer
 ```
 
 2. Instala las dependencias:
