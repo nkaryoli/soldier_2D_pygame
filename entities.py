@@ -89,8 +89,8 @@ class Soldier(pygame.sprite.Sprite):
 		self.alive = True
 		self.char_type = char_type
 		self.speed = speed # assign the parameter to the instance
-		self.ammo = ammo
-		self.start_ammo = ammo
+		self.ammo = min(ammo, MAX_AMMO)
+		self.start_ammo = self.ammo
 		self.shoot_cooldown = 0
 		self.grenades = grenades
 		self.health = 100
@@ -342,7 +342,9 @@ class ItemBox(pygame.sprite.Sprite):
 					if player.health > player.max_health:
 						player.health = player.max_health
 				elif self.item_type == 'Ammo':
-					player.ammo += 15
+					player.ammo += 5
+					if player.ammo > MAX_AMMO:
+						player.ammo = MAX_AMMO
 				elif self.item_type == 'Grenade':
 					player.grenades += 3
 				# Delete the item
@@ -401,7 +403,7 @@ class Grenade(pygame.sprite.Sprite):
 		pygame.sprite.Sprite.__init__(self)
 		self.timer = 100
 		self.vel_y = -11
-		self.speed = 7
+		self.speed = 5
 		self.image = grenade_img
 		self.rect = self.image.get_rect()
 		self.rect.center = (x, y)

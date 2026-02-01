@@ -15,6 +15,7 @@ COLS = 150
 TILE_SIZE = SCREEN_HEIGHT // ROWS
 TILE_TYPES = 32
 MAX_LEVEL = 3
+MAX_AMMO = 30
 
 ############### --- COLORS --- ###############
 BG = (25, 39, 43)
