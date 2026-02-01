@@ -28,6 +28,7 @@ screen_scroll = 0
 bg_scroll = 0
 level = 1
 start_game = False
+start_intro = False
 MAX_LEVEL = 3
 
 ############### --- ACTION VARIABLES --- ###############
@@ -61,8 +62,8 @@ restart_img = pygame.image.load('img/restart_btn.png').convert_alpha()
 # pine1_img = pygame.image.load('img/Background/pine1.png').convert_alpha()
 # pine2_img = pygame.image.load('img/Background/pine2.png').convert_alpha()
 mountain_img = pygame.image.load('img/Background/BG.png').convert_alpha()
-# sky_img = pygame.image.load('img/Background/sky_cloud.png').convert_alpha()
-
+welcome_img = pygame.image.load('img/Background/welcome.png').convert_alpha()
+welcome_img = pygame.transform.scale(welcome_img, (SCREEN_WIDTH, SCREEN_HEIGHT))
 # Bullets
 bullet_img = pygame.image.load('img/icons/bullet.png').convert_alpha()
 
@@ -116,7 +117,8 @@ RED = (255, 0, 0)
 WHITE = (255, 255, 255)
 GREEN = (0, 255, 0)
 BLACK = (0, 0, 0)
-
+PINK = (235, 65, 54)
+BROWN = (47, 30 , 30)
 ############### --- HELPER FUNCTIONS --- ###############idle
 
 # Define Fontç
@@ -413,7 +415,7 @@ class World():
 						exit_group.add(exit )
 					elif tile == 31: # create player
 						player = Soldier('player', x * TILE_SIZE, y * TILE_SIZE, 0.1, 5, 20 , 5) # instance(player) from the Soldier class
-						health_bar = HealthBar(10, 10, player.health, player.health) # instance of the HealthBar class
+						health_bar = HealthBar(SCREEN_WIDTH - 160, 10, player.health, player.health) # instance of the HealthBar class
 					elif tile == 30: # create enemy
 						enemy = Soldier('enemy', x * TILE_SIZE, y * TILE_SIZE, 0.11, 2, 20, 0) # instance(enemy) from the Soldier class
 						enemy_group.add(enemy)
@@ -494,7 +496,7 @@ class HealthBar():
 		self.health = health
 		# Calculate health ratio
 		ratio = self.health / self.max_health
-		pygame.draw.rect(screen, BLACK, (self.x - 2, self.y - 2, 154, 24))
+		# pygame.draw.rect(screen, BLACK, (self.x - 2, self.y - 2, 154, 24))
 		pygame.draw.rect(screen, RED, (self.x, self.y, 150, 20))
 		pygame.draw.rect(screen, GREEN, (self.x, self.y, 150 * ratio, 20))
 ###
@@ -588,6 +590,37 @@ class Grenade(pygame.sprite.Sprite):
 					enemy.health -= 50
 ###
 
+### FADE CLASS ###
+class ScreenFade():
+	def __init__(self, direction, colour, speed):
+		self.direction = direction
+		self.colour = colour
+		self.speed = speed
+		self.fade_counter = 0
+
+	def fade(self):
+		fade_complete = False
+		self.fade_counter += self.speed
+
+		if self.direction == 1: # whole screen fade
+			pygame.draw.rect(screen, self.colour, (0 - self.fade_counter, 0, SCREEN_WIDTH // 2, SCREEN_HEIGHT))
+			pygame.draw.rect(screen, self.colour, (SCREEN_WIDTH // 2 + self.fade_counter, 0, SCREEN_WIDTH , SCREEN_HEIGHT))
+			pygame.draw.rect(screen, self.colour, (0, 0 - self.fade_counter, SCREEN_WIDTH, SCREEN_HEIGHT // 2))
+			pygame.draw.rect(screen, self.colour, (0, SCREEN_HEIGHT // 2 + self.fade_counter, SCREEN_WIDTH , SCREEN_HEIGHT))
+
+		if self.direction == 2: # vertical fade
+			pygame.draw.rect(screen, self.colour, (0, 0, SCREEN_WIDTH, 0 + self.fade_counter))
+		
+		if self.fade_counter >= SCREEN_WIDTH:
+			fade_complete = True
+
+		return fade_complete
+
+
+# Create screen fade
+intro_fade = ScreenFade(1, BROWN, 4)
+death_fade = ScreenFade(2, BROWN, 4)
+
 ### EXPLOSION CLASS ###
 class Explosion(pygame.sprite.Sprite):
 	def __init__(self, x, y, scale):
@@ -650,9 +683,9 @@ class Button():
 ###
 
 ############### --- CREATE BUTTONS --- ###############
-start_button = Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 - 140, start_img, 0.9)
-exit_button = Button(SCREEN_WIDTH // 2 - 105, SCREEN_HEIGHT // 2 + 30, exit_img, 0.8)
-restart_button = Button(SCREEN_WIDTH // 2 - 110, SCREEN_HEIGHT // 2 - 50, restart_img, 2)
+start_button = Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 - 50, start_img, 0.2)
+exit_button = Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 + 80, exit_img, 0.2)
+restart_button = Button(SCREEN_WIDTH // 2 - 160, SCREEN_HEIGHT // 2 - 50, restart_img, 0.2)
 
 ############### --- SPRITES GROUPS --- ###############
 enemy_group = pygame.sprite.Group()
@@ -688,10 +721,13 @@ while (run):
 
 	if start_game == False:
 		# Draw menu
-		screen.fill(BG)
+		# screen.fill(BG)
+		
+		screen.blit(welcome_img, (0, 0))
 		# add buttons
 		if start_button.draw(screen):
 			start_game = True
+			start_intro = True
 		if exit_button.draw(screen):
 			run = False
 	else: 
@@ -711,18 +747,19 @@ while (run):
 		decoration_group.draw(screen)
 		item_box_group.draw(screen)
 		exit_group.draw(screen)
+
 		# Draw qorld map
 		world.draw()
 		# Show player health
 		health_bar.draw(player.health)
 		# Show ammo
-		draw_text(f'AMMO: ', font, WHITE, 10, 35)
+		draw_text(f'Bullets: ', font, BLACK, 10, 10)
 		for x in range(player.ammo):
-			screen.blit(bullet_img, (90 + (x * 10), 40))
+			screen.blit(bullet_img, (100 + (x * 15), 15))
 		# Show grenades
-		draw_text(f'GRENADES: ', font, WHITE, 10, 60)
+		draw_text(f'Grenades: ', font, BLACK, 10, 40)
 		for x in range(player.grenades):
-			screen.blit(grenade_img, (135 + (x * 15), 60))
+			screen.blit(grenade_img, (120 + (x * 15), 40))
 			
 		player.update()
 		player.draw() # Draw player on the screen
@@ -732,6 +769,12 @@ while (run):
 			enemy.update()
 			enemy.draw()
 
+
+		#Show intro
+		if start_intro == True:
+			if intro_fade.fade():
+				start_intro = False
+				intro_fade.fade_counter = 0
 
 		# Update player actions
 		if player.alive:
@@ -767,6 +810,7 @@ while (run):
 				player.update_action(0) # idle
 			# check level completed
 			if level_complete:
+				start_intro = True
 				# level += 1
 				bg_scroll = 0
 				world_data = reset_level()
@@ -781,19 +825,22 @@ while (run):
 				player, health_bar = world.process_data(world_data)
 		else:
 			screen_scroll = 0
-			if restart_button.draw(screen):
-				bg_scroll = 0
-				world_data = reset_level()
-				# Load in level data and create world
-				if level < MAX_LEVEL:
-					with open(f'level{level}_data.csv', newline='') as csvfile:
-						reader = csv.reader(csvfile, delimiter=',')
-						for x, row in enumerate(reader):
-							for y, tile in enumerate(row):
-								world_data[x][y] = int(tile)
+			if death_fade.fade():
+				if restart_button.draw(screen):
+					death_fade.fade_counter = 0
+					start_intro = True
+					bg_scroll = 0
+					world_data = reset_level()
+					# Load in level data and create world
+					if level < MAX_LEVEL:
+						with open(f'level{level}_data.csv', newline='') as csvfile:
+							reader = csv.reader(csvfile, delimiter=',')
+							for x, row in enumerate(reader):
+								for y, tile in enumerate(row):
+									world_data[x][y] = int(tile)
 
-					world = World()
-					player, health_bar = world.process_data(world_data)
+						world = World()
+						player, health_bar = world.process_data(world_data)
 
 	for event in pygame.event.get():
 		# quit game
