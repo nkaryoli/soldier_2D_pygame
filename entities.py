@@ -21,6 +21,7 @@ grenade_fx.set_volume(0.5)
 ############### --- IMAGES --- ###############
 # Button
 start_img = pygame.image.load('img/start_btn.png').convert_alpha()
+load_img = pygame.image.load('img/load_btn.png').convert_alpha()
 exit_img = pygame.image.load('img/exit_btn.png').convert_alpha()
 restart_img = pygame.image.load('img/restart_btn.png').convert_alpha()
 
@@ -42,36 +43,66 @@ item_boxes = {
 	'Grenade' : grenade_box_img
 }
 
-# Store tiles in a list
-img_list = []
+# Global Cache for Assets
+animation_cache = {}
+tile_cache = []
+explosion_cache = []
 
-for x in range(TILE_TYPES):
-	img = pygame.image.load(f'img/Tile/{x}.png')
-	w = TILE_SIZE
-	h = TILE_SIZE
+def load_character_animations(char_type, scale):
+	# Check if animations are already in cache
+	if char_type in animation_cache:
+		return animation_cache[char_type]
+	
+	# If not in cache, load them from disk
+	animation_list = []
+	animation_types = ['Idle', 'Run', 'Jump', 'Death', 'Shoot']
+	for animation in animation_types:
+		temp_list = []
+		path = f'img/{char_type}/{animation}'
+		if os.path.exists(path):
+			files = [f for f in os.listdir(path) if f.endswith('.png')]
+			num_of_frames = len(files)
+			for i in range(num_of_frames):
+				img = pygame.image.load(f'{path}/{i}.png').convert_alpha()
+				img = pygame.transform.scale(img, (int(img.get_width() * scale), int(img.get_height() * scale)))
+				temp_list.append(img)
+		animation_list.append(temp_list)
+	
+	animation_cache[char_type] = animation_list
+	return animation_list
 
-	# Definir escalas personalizadas para tiles de decoración
-	decoration_scales = {
-		16: 1.0,
-		17: 1.0,
-		18: 0.7,
-		19: 0.5,
-		20: 0.7,
-		21: 0.8,
-		22: 0.8,
-		23: 0.6,
-		24: 0.6,
-		25: 0.5
-	}
+def load_tiles():
+	global tile_cache
+	if tile_cache: return tile_cache
+	
+	for x in range(TILE_TYPES):
+		img = pygame.image.load(f'img/Tile/{x}.png')
+		w = TILE_SIZE
+		h = TILE_SIZE
+		decoration_scales = {
+			16: 1.0, 17: 1.0, 18: 0.7, 19: 0.5, 20: 0.7,
+			21: 0.8, 22: 0.8, 23: 0.6, 24: 0.6, 25: 0.5
+		}
+		if x in decoration_scales:
+			scale = decoration_scales[x]
+			w = int(img.get_width() * scale)
+			h = int(img.get_height() * scale)
+		img = pygame.transform.scale(img, (w, h))
+		tile_cache.append(img)
+	return tile_cache
 
-	# Aplicar escala si el tile está en el diccionario
-	if x in decoration_scales:
-		scale = decoration_scales[x]
-		w = int(img.get_width() * scale)
-		h = int(img.get_height() * scale)
+def load_explosion_animations(scale):
+	global explosion_cache
+	if explosion_cache: return explosion_cache
+	
+	for num in range(1, 6):
+		img = pygame.image.load(f'img/explosion/exp{num}.png').convert_alpha()
+		img = pygame.transform.scale(img, (int(img.get_width() * scale), int(img.get_height() * scale)))
+		explosion_cache.append(img)
+	return explosion_cache
 
-	img = pygame.transform.scale(img, (w, h))
-	img_list.append(img)
+# Store tiles in a list (Lazy load or pre-load once)
+img_list = load_tiles()
 
 ############### --- SPRITE GROUPS --- ###############
 enemy_group = pygame.sprite.Group()
@@ -82,13 +113,13 @@ item_box_group = pygame.sprite.Group()
 decoration_group = pygame.sprite.Group()
 exit_group = pygame.sprite.Group()
 
-#### SOLDIER CLASS ###
-class Soldier(pygame.sprite.Sprite):
-	def __init__(self, char_type, x, y, scale, speed, ammo, grenades): # CONSTRUCTOR
-		pygame.sprite.Sprite.__init__(self) # to inherit pygame's functionalities
+#### BASE CHARACTER CLASS ###
+class BaseCharacter(pygame.sprite.Sprite):
+	def __init__(self, char_type, x, y, scale, speed, ammo, grenades):
+		pygame.sprite.Sprite.__init__(self)
 		self.alive = True
 		self.char_type = char_type
-		self.speed = speed # assign the parameter to the instance
+		self.speed = speed
 		self.ammo = min(ammo, MAX_AMMO)
 		self.start_ammo = self.ammo
 		self.shoot_cooldown = 0
@@ -100,121 +131,49 @@ class Soldier(pygame.sprite.Sprite):
 		self.jump = False
 		self.in_air = True
 		self.flip = False
-		self.animation_list = []
+		self.animation_list = load_character_animations(self.char_type, scale)
 		self.frame_index = 0
-		self.action = 0 # index that indicates which animation I'm in
+		self.action = 0 # 0:Idle, 1:Run, 2:Jump, 3:Death, 4:Shoot
 		self.update_time = pygame.time.get_ticks()
-		# AI specific variable
-		self.move_counter = 0
-		self.vision = pygame.Rect(0, 0, 150, 20)
-		self.idling = False
-		self.idiling_counter = 0
-
-		# Load all animations for the player
-		animation_types = ['Idle', 'Run', 'Jump' , 'Death', 'Shoot']
-		for animation in animation_types:
-			temp_list = [] # temporary list to store animation groups
-			# Count files in the folder
-			num_of_frames = len(os.listdir(f'img/{self.char_type}/{animation}'))
-			for i in range(num_of_frames):
-				img = pygame.image.load(f'img/{self.char_type}/{animation}/{i}.png').convert_alpha() 
-				img = pygame.transform.scale(img, (int(img.get_width() * scale), int(img.get_height() * scale))) # Scale the image since it's too big
-				temp_list.append(img)
-			self.animation_list.append(temp_list) # save temp_list in the animations list
-
+		
+		# Rectangle and Hitbox
 		self.image = self.animation_list[self.action][self.frame_index]
-		self.rect = self.image.get_rect() # rectangle around the image
-		self.rect.center = (x, y) # place the rect in the position received as parameter
+		self.rect = self.image.get_rect()
+		self.rect.center = (x, y)
 		self.width = self.image.get_width()
 		self.height = self.image.get_height()
-
-		self.hitbox = pygame.Rect(0, 0, self.rect.width * 0.5, self.rect.height * 0.9) # rect aroun player for collisions
+		self.hitbox = pygame.Rect(0, 0, self.rect.width * 0.5, self.rect.height * 0.9)
 		self.hitbox.center = self.rect.center
 
 	def update(self):
 		self.update_animation()
 		self.check_alive()
-		# Update cooldown
 		if self.shoot_cooldown > 0:
 			self.shoot_cooldown -= 1
 
-	def move(self, moving_left, moving_right, world, bg_scroll):
-		# Reset movement variables
-		screen_scroll = 0
-		dx = 0
-		dy = 0
-		
-		# Assign movement to variables depending on how player is moving
-		if moving_left:
-			dx = -self.speed
-			self.flip = True
-			self.direction = -1
-		if moving_right:
-			dx = self.speed
-			self.flip = False
-			self.direction = 1
-		# Jump
-		if self.jump == True and self.in_air == False:
-			self.vel_y = -11
-			self.jump = False
-			self.in_air = True
-		# Gravity
-		self.vel_y += GRAVITY
-		if self.vel_y > 10:
-			self.vel_y = 10
-		dy += self.vel_y
-
-		# COLLISIONS
+	def move(self, dx, dy, world):
+		# Standard physics collision for all characters
+		# Collisions
 		for tile in world.obstacle_list:
-			#check collision in the x direction
+			# check collision in the x direction
 			if tile[1].colliderect(self.hitbox.x + dx, self.hitbox.y, self.hitbox.width, self.hitbox.height):
 				dx = 0
-
 			# check for collisions in the 'y' direction
 			if tile[1].colliderect(self.hitbox.x, self.hitbox.y + dy, self.hitbox.width, self.hitbox.height):
-				# check if bellow the ground, i.e. jumping
-				if self.vel_y < 0:
+				if self.vel_y < 0: # jumping
 					self.vel_y = 0
 					dy = tile[1].bottom - self.hitbox.top
-				# check if above the ground, i.e. falling
-				elif self.vel_y >= 0:
+				elif self.vel_y >= 0: # falling
 					self.vel_y = 0
 					self.in_air = False
 					dy = tile[1].top - self.hitbox.bottom
-
-		# collision with exit
-		level_complete = False
-		if pygame.sprite.spritecollide(self, exit_group, False):
-			level_complete = True
-
-		# if player falls
-		if self.rect.bottom > SCREEN_HEIGHT:
-			self.health = 0
-
-		# check if going off the edges of the screen
-		if self.char_type == 'player':
-			if self.rect.left + dx < 0 or self.rect.right + dx > SCREEN_WIDTH:
-				dx = 0
-
-		# update scroll based on player position
-		if self.char_type == 'player':
-			# Scroll hacia la derecha
-			if self.hitbox.right > SCREEN_WIDTH - SCROLL_THRESH and bg_scroll < (world.level_length * TILE_SIZE) - SCREEN_WIDTH:
-				self.hitbox.x -= dx
-				screen_scroll = -dx
-			# Scroll hacia la izquierda
-			elif self.hitbox.left < SCROLL_THRESH and bg_scroll > 0:
-				self.hitbox.x -= dx
-				screen_scroll = -dx
-
-		# move hitbox (FÍSICA)
+		
+		# Update positions
 		self.hitbox.x += dx
 		self.hitbox.y += dy
-
-		# synchronize sprite with hitbox (VISUALLY)
 		self.rect.center = self.hitbox.center
-	
-		return screen_scroll, level_complete
+		
+		return dx, dy
 
 	def shoot(self):
 		if self.shoot_cooldown == 0 and self.ammo > 0:
@@ -224,69 +183,21 @@ class Soldier(pygame.sprite.Sprite):
 			self.ammo -= 1
 			shot_fx.play()
 
-	def ai(self, player, world, screen_scroll):
-		if self.alive and player.alive:
-			if self.idling == False and random.randint(1, 200) == 1:
-				self.update_action(0) # idle animation
-				self.idling = True
-				self.idiling_counter = 50
-			
-			# Update ai vision as the enemy moves
-			self.vision.center = (self.hitbox.centerx + 75 * self.direction, self.hitbox.centery)
-			
-			# Check if the ai is near the player
-			if self.vision.colliderect(player.hitbox):
-				# Stop running and face player
-				self.update_action(0) # idle 
-				# Shoot the player
-				self.shoot()
-			# If it does not 'see' the player, continue with patrol
-			else:
-				# Patrolling
-				if self.idling == False:
-					if self.direction == 1:
-						ai_moving_right = True
-					else:
-						ai_moving_right = False
-
-					ai_moving_left = not ai_moving_right
-					# Move ai
-					self.move(ai_moving_left, ai_moving_right, world, 0)
-					self.update_action(1) # run animation
-					self.move_counter += 1
-
-					if self.move_counter > TILE_SIZE * 3:
-						self.direction *= -1
-						self.move_counter = -1
-				else:
-					self.idiling_counter -= 1
-					if self.idiling_counter <= 0:
-						self.idling = False
-		# scroll
-		self.hitbox.x += screen_scroll
-		self.rect.center = self.hitbox.center
-
 	def update_animation(self):
-		# Update animation
 		ANIMATION_COOLDOWN = 100
-		# Update image depending on the frame and current animation
 		self.image = self.animation_list[self.action][self.frame_index]
-		# Check if enough time has passed since the last update
 		if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
-			self.update_time = pygame.time.get_ticks() # update the instance time
-			self.frame_index += 1 # move to the next index in the list
-		# If the animation has reached the last index in the list
+			self.update_time = pygame.time.get_ticks()
+			self.frame_index += 1
 		if self.frame_index >= len(self.animation_list[self.action]):
-			if self.action == 3:
-				self.frame_index = len(self.animation_list[self.action]) - 1 # if it's DEATH, stop the animation
+			if self.action == 3: # Death
+				self.frame_index = len(self.animation_list[self.action]) - 1
 			else:
-				self.frame_index = 0 # For the rest, reset it to the beginning
+				self.frame_index = 0
 
 	def update_action(self, new_action):
-		# Check if the current animation is different from the previous one
 		if new_action != self.action:
 			self.action = new_action
-			# Update the animation configuration
 			self.frame_index = 0
 			self.update_time = pygame.time.get_ticks()
 
@@ -295,10 +206,117 @@ class Soldier(pygame.sprite.Sprite):
 			self.health = 0
 			self.speed = 0
 			self.alive = False
-			self.update_action(3) # play death animation
+			self.update_action(3)
 
 	def draw(self, screen):
 		screen.blit(pygame.transform.flip(self.image, self.flip, False), self.rect)
+
+
+#### PLAYER CLASS ###
+class Player(BaseCharacter):
+	def __init__(self, x, y, scale, speed, ammo, grenades):
+		super().__init__('player', x, y, scale, speed, ammo, grenades)
+
+	def move(self, moving_left, moving_right, world, bg_scroll):
+		screen_scroll = 0
+		dx = 0
+		dy = 0
+		
+		# Movement logic
+		if moving_left:
+			dx = -self.speed
+			self.flip = True
+			self.direction = -1
+		if moving_right:
+			dx = self.speed
+			self.flip = False
+			self.direction = 1
+		
+		if self.jump and not self.in_air:
+			self.vel_y = -11
+			self.jump = False
+			self.in_air = True
+			
+		self.vel_y += GRAVITY
+		if self.vel_y > 10: self.vel_y = 10
+		dy += self.vel_y
+
+		# Tile collisions from base
+		dx, dy = super().move(dx, dy, world)
+
+		# Player-specific: Exit and Fall death
+		level_complete = False
+		if pygame.sprite.spritecollide(self, exit_group, False):
+			level_complete = True
+
+		if self.rect.bottom > SCREEN_HEIGHT:
+			self.health = 0
+
+		# Prevent going off screen (clamping)
+		if self.rect.left < 0 or self.rect.right > SCREEN_WIDTH:
+			# If we hit the absolute screen edges and there's no more scroll
+			pass # Actual logic handled by scroll blocks below
+
+		# Scroll logic
+		if self.hitbox.right > SCREEN_WIDTH - SCROLL_THRESH and bg_scroll < (world.level_length * TILE_SIZE) - SCREEN_WIDTH:
+			self.hitbox.x -= dx
+			screen_scroll = -dx
+		elif self.hitbox.left < SCROLL_THRESH and bg_scroll > 0:
+			self.hitbox.x -= dx
+			screen_scroll = -dx
+		
+		self.rect.center = self.hitbox.center
+		return screen_scroll, level_complete
+
+
+#### ENEMY CLASS ###
+class Enemy(BaseCharacter):
+	def __init__(self, x, y, scale, speed, ammo, grenades):
+		super().__init__('enemy', x, y, scale, speed, ammo, grenades)
+		self.move_counter = 0
+		self.vision = pygame.Rect(0, 0, 150, 20)
+		self.idling = False
+		self.idiling_counter = 0
+
+	def ai(self, player, world, screen_scroll):
+		if self.alive and player.alive:
+			if not self.idling and random.randint(1, 200) == 1:
+				self.update_action(0)
+				self.idling = True
+				self.idiling_counter = 50
+			
+			self.vision.center = (self.hitbox.centerx + 75 * self.direction, self.hitbox.centery)
+			
+			if self.vision.colliderect(player.hitbox):
+				self.update_action(0)
+				self.shoot()
+			else:
+				if not self.idling:
+					# Simple AI movement
+					dx = self.direction * self.speed
+					self.flip = self.direction == -1
+					
+					# Basic gravity for enemy
+					self.vel_y += GRAVITY
+					if self.vel_y > 10: self.vel_y = 10
+					dy = self.vel_y
+					
+					# Use base character movement
+					super().move(dx, dy, world)
+					self.update_action(1)
+					
+					self.move_counter += 1
+					if self.move_counter > TILE_SIZE * 3:
+						self.direction *= -1
+						self.move_counter = -1
+				else:
+					self.idiling_counter -= 1
+					if self.idiling_counter <= 0:
+						self.idling = False
+		
+		# Apply screen scroll to enemy
+		self.hitbox.x += screen_scroll
+		self.rect.center = self.hitbox.center
 
 ### DECORATION CLASS ###
 class Decoration(pygame.sprite.Sprite):
@@ -483,11 +501,7 @@ class ScreenFade():
 class Explosion(pygame.sprite.Sprite):
 	def __init__(self, x, y, scale):
 		pygame.sprite.Sprite.__init__(self)
-		self.images = []
-		for num in range(1, 6):
-			img = pygame.image.load(f'img/explosion/exp{num}.png')
-			img = pygame.transform.scale(img, (int(img.get_width() * scale), int(img.get_height() * scale)))
-			self.images.append(img)
+		self.images = load_explosion_animations(scale)
 		self.frame_index = 0
 		self.image = self.images[self.frame_index]
 		self.rect = self.image.get_rect()

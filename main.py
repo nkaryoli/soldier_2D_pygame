@@ -40,8 +40,9 @@ class Game:
 		self.death_fade = ScreenFade(2, BROWN, 4)
 		
 		# Buttons
-		self.start_button = Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 - 50, start_img, 0.2)
-		self.exit_button = Button(SCREEN_WIDTH // 2 - 130, SCREEN_HEIGHT // 2 + 80, exit_img, 0.2)
+		self.start_button = Button(SCREEN_WIDTH // 2 - 125, SCREEN_HEIGHT // 2 - 60, start_img, 0.14)
+		self.load_button = Button(SCREEN_WIDTH // 2 - 125, SCREEN_HEIGHT // 2 + 35, load_img, 0.14)
+		self.exit_button = Button(SCREEN_WIDTH // 2 - 85, SCREEN_HEIGHT // 2 + 130, exit_img, 0.13)
 		self.restart_button = Button(SCREEN_WIDTH // 2 - 160, SCREEN_HEIGHT // 2 - 50, restart_img, 0.2)
 		
 		self.load_level()
@@ -136,7 +137,7 @@ class Game:
 			enemy_group.empty()
 			for enemy_data in data['enemies']:
 				# Note: enemies use scale 0.11 and speed 2 as per world.py
-				enemy = Soldier('enemy', 0, 0, 0.11, 2, 20, 0)
+				enemy = Enemy(0, 0, 0.11, 2, 20, 0)
 				enemy.health = enemy_data['health']
 				enemy.direction = enemy_data['direction']
 				enemy.move_counter = enemy_data.get('move_counter', 0)
@@ -172,8 +173,6 @@ class Game:
 					self.run = False
 				if event.key == pygame.K_k:
 					self.save_game()
-				if event.key == pygame.K_l:
-					self.load_game()
 			# Keyboard button releases
 			if event.type == pygame.KEYUP:
 				if event.key == pygame.K_a or event.key == pygame.K_LEFT:
@@ -244,6 +243,10 @@ class Game:
 			self.screen.blit(welcome_img, (0, 0))
 			if self.start_button.draw(self.screen):
 				self.start_game = True
+				self.start_intro = True
+			if self.load_button.draw(self.screen):
+				self.start_game = True
+				self.load_game()
 				self.start_intro = True
 			if self.exit_button.draw(self.screen):
 				self.run = False

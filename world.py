@@ -38,10 +38,10 @@ class World():
 						exit = Decoration(img, x * TILE_SIZE, y * TILE_SIZE)
 						exit_group.add(exit )
 					elif tile == 31: # create player
-						player = Soldier('player', x * TILE_SIZE, y * TILE_SIZE, 0.1, 5, 20 , 5) # instance(player) from the Soldier class
-						health_bar = HealthBar(SCREEN_WIDTH - 160, 10, player.health, player.health) # instance of the HealthBar class
+						player = Player(x * TILE_SIZE, y * TILE_SIZE, 0.1, 5, 20 , 5)
+						health_bar = HealthBar(SCREEN_WIDTH - 160, 10, player.health, player.health)
 					elif tile == 30: # create enemy
-						enemy = Soldier('enemy', x * TILE_SIZE, y * TILE_SIZE, 0.11, 2, 20, 0) # instance(enemy) from the Soldier class
+						enemy = Enemy(x * TILE_SIZE, y * TILE_SIZE, 0.11, 2, 20, 0)
 						enemy_group.add(enemy)
 				
 		return player, health_bar
