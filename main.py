@@ -9,7 +9,7 @@ pygame.init()
 
 # SCREEN_WIDTH and SCREEN_HEIGHT are now imported from settings.py
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption('Shooter')
+pygame.display.set_caption('Dusty Belle')
 
 from entities import *
 from world import *
@@ -326,12 +326,12 @@ class Game:
 			# Show ammo
 			draw_text(self.screen, f'Bullets: ', font_small, BROWN, 10, 10)
 			for x in range(self.player.ammo):
-				self.screen.blit(bullet_img, (100 + (x * 15), 15))
+				self.screen.blit(rotated_bullet_img, (80 + (x * 8), 15))
 			
 			# Show grenades
 			draw_text(self.screen, f'Grenades: ', font_small, BROWN, 10, 40)
 			for x in range(self.player.grenades):
-				self.screen.blit(grenade_img, (120 + (x * 15), 40))
+				self.screen.blit(grenade_img, (100 + (x * 15), 40))
 			
 			# Draw in-game control buttons (only if player is alive and not confirming/paused)
 			if self.player.alive and not self.confirming_action and not self.pause:

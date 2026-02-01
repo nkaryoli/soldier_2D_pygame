@@ -39,6 +39,7 @@ welcome_img = pygame.transform.scale(welcome_img, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
 # Entity images
 bullet_img = pygame.image.load('img/icons/bullet.png').convert_alpha()
+rotated_bullet_img = pygame.transform.rotate(bullet_img, 90)
 grenade_img = pygame.image.load('img/icons/grenade.png').convert_alpha()
 health_box_img = pygame.image.load('img/icons/health_box.png').convert_alpha()
 ammo_box_img = pygame.image.load('img/icons/ammo_box.png').convert_alpha()
