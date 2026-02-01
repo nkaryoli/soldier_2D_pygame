@@ -56,7 +56,7 @@ class Game:
 		
 		# Confirmation Buttons (Moved down to avoid overlap with menu buttons)
 		self.yes_button = Button(SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2, yes_img, 0.1)
-		self.no_button = Button(SCREEN_WIDTH // 2 + 50, SCREEN_HEIGHT // 2, no_img, 0.1)
+		self.no_button = Button(SCREEN_WIDTH // 2 + 25, SCREEN_HEIGHT // 2, no_img, 0.1)
 		
 		self.confirming_action = None # Possible values: 'save', 'restart', 'menu', None
 		self.action_cooldown = 0 # Safety timer to avoid accidental double clicks
@@ -369,20 +369,19 @@ class Game:
 			if self.confirming_action:
 				# Darken background
 				overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-				overlay.set_alpha(100)
-				overlay.fill((0, 0, 0))
+				overlay.set_alpha(200)
+				overlay.fill(BROWN)
 				self.screen.blit(overlay, (0, 0))
 				
 				# Show message
-				msg = ""
 				if self.confirming_action == 'save':
-					msg = "   ¿Are you sure you want to save game?"
+					draw_text(self.screen, "Saving game progress..", font_medium, WHITE, SCREEN_WIDTH // 2 - 160, SCREEN_HEIGHT // 2 - 100)
 				elif self.confirming_action == 'restart':
-					msg = "¿Restart Game? (You will lose game progress)"
+					draw_text(self.screen, "Restart will delete your progress.", font_medium, WHITE, SCREEN_WIDTH // 2 - 210, SCREEN_HEIGHT // 2 - 100)
 				elif self.confirming_action == 'menu':
-					msg = "¿Go to Menu? (You will lose game progress)"
+					draw_text(self.screen, "This action will delete current progress.", font_medium, WHITE, SCREEN_WIDTH // 2 - 280, SCREEN_HEIGHT // 2 - 100)
 				
-				draw_text(self.screen, msg, font_medium, WHITE, SCREEN_WIDTH // 2 - 280, SCREEN_HEIGHT // 2 - 50)
+				draw_text(self.screen, "¿Do you want to continue?", font_medium, WHITE, SCREEN_WIDTH // 2 - 185, SCREEN_HEIGHT // 2 - 60)
 				
 				# Yes / No buttons
 				if self.yes_button.draw(self.screen):
