@@ -20,10 +20,17 @@ grenade_fx.set_volume(0.5)
 
 ############### --- IMAGES --- ###############
 # Button
-start_img = pygame.image.load('img/start_btn.png').convert_alpha()
-load_img = pygame.image.load('img/load_btn.png').convert_alpha()
-exit_img = pygame.image.load('img/exit_btn.png').convert_alpha()
-restart_img = pygame.image.load('img/restart_btn.png').convert_alpha()
+start_img = pygame.image.load('img/buttons/start_btn.png').convert_alpha()
+load_img = pygame.image.load('img/buttons/load_btn.png').convert_alpha()
+resume_img = pygame.image.load('img/buttons/resume_btn.png').convert_alpha()
+exit_img = pygame.image.load('img/buttons/exit_btn.png').convert_alpha()
+restart_img = pygame.image.load('img/buttons/restart_btn.png').convert_alpha()
+restart_small_img = pygame.image.load('img/buttons/restart_small_btn.png').convert_alpha()
+save_small_img = pygame.image.load('img/buttons/save_small_btn.png').convert_alpha()
+pause_img = pygame.image.load('img/buttons/pause_small_btn.png').convert_alpha()
+menu_small_img = pygame.image.load('img/buttons/menu_btn.png').convert_alpha()
+yes_img = pygame.image.load('img/buttons/yes_btn.png').convert_alpha()
+no_img = pygame.image.load('img/buttons/no_btn.png').convert_alpha()
 
 # Background images
 mountain_img = pygame.image.load('img/Background/BG.png').convert_alpha()

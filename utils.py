@@ -5,7 +5,9 @@ from settings import *
 from entities import *
 
 pygame.font.init()
-font = pygame.font.SysFont('Futura', 30)
+font_small = pygame.font.SysFont('Futura', 25)
+font_medium = pygame.font.SysFont('Futura', 40)
+font_big = pygame.font.SysFont('Futura', 90)
 
 ### BUTTON CLASS ###
 class Button():
@@ -65,13 +67,13 @@ def reset_level():
 	return data
 
 ### Save data to JSON
-def save_game_json(data):
-	with open('savegame.json', 'w') as f:
+def save_game_json(data, filename='saved_game.json'):
+	with open(filename, 'w') as f:
 		json.dump(data, f, indent=4)
 
 ### Load data from JSON
-def load_game_json():
-	if os.path.exists('savegame.json'):
-		with open('savegame.json', 'r') as f:
+def load_game_json(filename='saved_game.json'):
+	if os.path.exists(filename):
+		with open(filename, 'r') as f:
 			return json.load(f)
 	return None
